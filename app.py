@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime
 import os
 from database import load_data, generate_payslip_no, HISTORY_FILE
+# เพิ่มการอ้างอิงไฟล์พนักงาน
+EMP_FILE = "database_employees.csv"
 from generate_payslip_pdf import generate_payslip_pdf_bytes
 
 st.set_page_config(page_title="ระบบสลิปเงินเดือน", layout="wide")
@@ -11,7 +13,8 @@ load_data()
 
 st.title("💸 ระบบออกใบแจ้งเงินเดือน (Payslip Generator)")
 
-tab1, tab2 = st.tabs(["สร้างสลิปเงินเดือน", "ประวัติการออกสลิป"])
+# เพิ่มแท็บฐานข้อมูลพนักงาน
+tab1, tab2, tab3 = st.tabs(["สร้างสลิปเงินเดือน", "ประวัติการออกสลิป", "ฐานข้อมูลพนักงาน"])
 
 with tab1:
     doc_no = generate_payslip_no()
@@ -20,7 +23,19 @@ with tab1:
     with st.form("payslip_form"):
         col1, col2 = st.columns(2)
         with col1:
-            emp_name = st.text_input("ชื่อ-นามสกุลพนักงาน")
+            # ==========================================
+            # ระบบจดจำและเลือกชื่อพนักงาน
+            # ==========================================
+            emp_list = st.session_state.db_employees["ชื่อ-นามสกุล"].tolist() if not st.session_state.db_employees.empty else []
+            
+            # ให้เลือกว่าจะดึงรายชื่อเดิม หรือ พิมพ์ชื่อใหม่
+            emp_mode = st.radio("รูปแบบการกรอกชื่อ:", ["เลือกจากรายชื่อเดิม", "พิมพ์ชื่อพนักงานใหม่"], horizontal=True)
+            
+            if emp_mode == "เลือกจากรายชื่อเดิม" and emp_list:
+                emp_name = st.selectbox("เลือกชื่อพนักงาน", emp_list)
+            else:
+                emp_name = st.text_input("พิมพ์ชื่อ-นามสกุลพนักงาน (ระบบจะจดจำอัตโนมัติ)")
+                
             month = st.text_input("ประจำเดือน/ปี (เช่น มีนาคม 2569)")
             st.markdown("---")
             st.markdown("**รายรับ (Income)**")
@@ -42,6 +57,16 @@ with tab1:
         if not emp_name:
             st.warning("กรุณากรอกชื่อพนักงาน")
         else:
+            # ==========================================
+            # บันทึกชื่อพนักงานใหม่ลงฐานข้อมูล (ถ้ายังไม่มี)
+            # ==========================================
+            if emp_name not in st.session_state.db_employees["ชื่อ-นามสกุล"].values:
+                # สร้างข้อมูลพนักงานใหม่
+                new_emp = pd.DataFrame([{"รหัสพนักงาน": "-", "ชื่อ-นามสกุล": emp_name, "ตำแหน่ง": "-", "แผนก": "-", "ฐานเงินเดือน": salary}])
+                st.session_state.db_employees = pd.concat([st.session_state.db_employees, new_emp], ignore_index=True)
+                # บันทึกลงไฟล์ CSV
+                st.session_state.db_employees.to_csv(EMP_FILE, index=False, encoding='utf-8-sig')
+
             # คำนวณยอดรวม
             income_sum = salary + bonus + other_income
             deduction_sum = tax + absent + other_deduct
@@ -67,7 +92,7 @@ with tab1:
                 # สร้าง PDF
                 pdf_bytes = generate_payslip_pdf_bytes(payslip_info)
                 
-                # บันทึกลงประวัติ (CSV)
+                # บันทึกลงประวัติสลิป (CSV)
                 new_record = pd.DataFrame([{
                     "วันที่": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "เลขที่สลิป": doc_no,
@@ -77,9 +102,14 @@ with tab1:
                 st.session_state.db_history = pd.concat([st.session_state.db_history, new_record], ignore_index=True)
                 st.session_state.db_history.to_csv(HISTORY_FILE, index=False, encoding='utf-8-sig')
                 
-                st.success("สร้างสำเร็จ! บันทึกประวัติเรียบร้อยแล้ว")
+                st.success(f"สร้างสำเร็จ! ระบบจดจำชื่อ '{emp_name}' เรียบร้อยแล้ว")
                 st.download_button("📥 ดาวน์โหลดสลิป (PDF)", data=pdf_bytes, file_name=f"{doc_no}_{emp_name}.pdf", mime="application/pdf")
 
 with tab2:
     st.subheader("ประวัติการออกสลิปเงินเดือน")
     st.dataframe(st.session_state.db_history, use_container_width=True)
+
+with tab3:
+    st.subheader("👥 ฐานข้อมูลพนักงาน")
+    st.write("รายชื่อพนักงานที่ระบบจดจำไว้ (จะถูกเพิ่มอัตโนมัติเมื่อสร้างสลิปด้วยชื่อใหม่)")
+    st.dataframe(st.session_state.db_employees, use_container_width=True)
