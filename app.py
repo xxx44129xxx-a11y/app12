@@ -13,7 +13,7 @@ load_data()
 if st.session_state.db_employees.empty or "ชื่อ-นามสกุล" not in st.session_state.db_employees.columns:
     st.session_state.db_employees = pd.DataFrame(columns=["รหัสพนักงาน", "ชื่อ-นามสกุล", "ตำแหน่ง", "แผนก", "ฐานเงินเดือน"])
 
-st.title("💸 ระบบออกใบแจ้งเงินเดือน (จดจำข้อมูลอัตโนมัติ)")
+st.title("💸 ระบบออกใบแจ้งเงินเดือน")
 
 tab1, tab2, tab3 = st.tabs(["สร้างสลิปเงินเดือน", "ประวัติการออกสลิป", "ฐานข้อมูลพนักงาน"])
 
@@ -23,7 +23,7 @@ with tab1:
     emp_list = st.session_state.db_employees["ชื่อ-นามสกุล"].tolist()
     
     # ตัวเลือกการกรอกชื่อ
-    name_option = st.selectbox("ค้นหารายชื่อพนักงานที่จำไว้ (หรือพิมพ์ชื่อใหม่ด้านล่าง)", ["-- พิมพ์ชื่อใหม่ --"] + emp_list)
+    name_option = st.selectbox("ค้นหารายชื่อพนักงานที่บันทึกไว้ (หรือพิมพ์ชื่อใหม่ด้านล่าง)", ["-- พิมพ์ชื่อใหม่ --"] + emp_list)
     
     # ดึงข้อมูลเดิมมาใส่ใน Default Value ถ้ามีการเลือกชื่อ
     saved_data = {}
@@ -59,7 +59,7 @@ with tab1:
             ot_hours = st.number_input("จำนวนชั่วโมง OT", min_value=0.0, step=1.0)
         with col_i3:
             ot_amount_auto = (daily_wage * 1.5 / 8) * ot_hours
-            st.info(f"💰 ยอดเงิน OT:\n\n **{ot_amount_auto:,.2f} บาท**")
+            st.info(f"💰 ยอดเงิน OT ที่คำนวณได้:\n\n **{ot_amount_auto:,.2f} บาท**")
 
         st.markdown("---")
         st.subheader("3. รายการหัก และ ยอดสะสม (YTD)")
@@ -78,7 +78,7 @@ with tab1:
 
     if submit_btn:
         if not emp_name:
-            st.error("กรุณากรอกชื่อพนักงานก่อนมึง!")
+            st.error("กรุณากรอกชื่อ-นามสกุลของพนักงาน")
         else:
             # --- ระบบจดจำและอัปเดตข้อมูลพนักงาน ---
             new_emp_data = {
@@ -121,13 +121,12 @@ with tab1:
                 st.session_state.db_history = pd.concat([st.session_state.db_history, new_hist], ignore_index=True)
                 st.session_state.db_history.to_csv(HISTORY_FILE, index=False, encoding='utf-8-sig')
                 
-                st.success(f"บันทึกข้อมูลคุณ {emp_name} เรียบร้อย!")
+                st.success(f"บันทึกข้อมูลและสร้างเอกสารของคุณ {emp_name} เรียบร้อยแล้ว")
                 st.download_button("📥 ดาวน์โหลดสลิป (PDF)", data=pdf_bytes, file_name=f"Payslip_{emp_name}.pdf", mime="application/pdf")
-                st.rerun() # รีเฟรชหน้าเพื่อให้ Dropdown อัปเดตรายชื่อล่าสุด
 
 with tab2:
     st.subheader("ประวัติการออกสลิป")
     st.dataframe(st.session_state.db_history, use_container_width=True)
 with tab3:
-    st.subheader("รายชื่อพนักงานที่จำไว้")
+    st.subheader("รายชื่อพนักงานที่บันทึกไว้")
     st.dataframe(st.session_state.db_employees, use_container_width=True)
