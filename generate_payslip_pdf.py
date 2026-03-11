@@ -5,13 +5,12 @@ def generate_payslip_pdf_bytes(info):
     pdf = FPDF(unit='mm', format='A4')
     pdf.add_page()
     
-    # ตั้งค่าฟอนต์ THSarabunNew
     font_path = "THSarabunNew.ttf"
     if os.path.exists(font_path):
         pdf.add_font('THSarabunNew', '', font_path, uni=True)
+        pdf.add_font('THSarabunNew', 'B', font_path, uni=True) # กรณีต้องการตัวหนา
         pdf.set_font('THSarabunNew', '', 16)
     else:
-        # หากหาไฟล์ฟอนต์ไม่เจอ จะใช้ฟอนต์พื้นฐานแทน
         pdf.set_font('Arial', '', 12)
         
     # --- ส่วนหัวเอกสาร ---
@@ -19,41 +18,45 @@ def generate_payslip_pdf_bytes(info):
     pdf.cell(0, 10, 'ใบแจ้งยอดเงินเดือน / PAY SLIP', ln=True, align='C')
     pdf.ln(5)
     
-    # --- ส่วนข้อมูลพนักงาน ---
+    # --- ส่วนข้อมูลพนักงาน (ปรับให้ตรงตามรูป) ---
     pdf.set_font('THSarabunNew', '', 16)
     
-    # บรรทัดที่ 1
-    pdf.cell(30, 8, 'รหัสพนักงาน:', 0, 0)
-    pdf.cell(60, 8, str(info.get("emp_id", "-")), border='B', ln=0)
-    pdf.cell(30, 8, 'ตำแหน่ง:', 0, 0)
-    pdf.cell(60, 8, str(info.get("position", "-")), border='B', ln=1)
+    # บรรทัดที่ 1: รหัสพนักงาน | ตำแหน่ง
+    pdf.cell(30, 7, 'รหัสพนักงาน:', 0, 0)
+    pdf.cell(60, 7, str(info.get("emp_id", "-")), border='B', ln=0)
+    pdf.cell(30, 7, 'ตำแหน่ง:', 0, 0)
+    pdf.cell(60, 7, str(info.get("position", "-")), border='B', ln=1)
     
-    # บรรทัดที่ 2
-    pdf.cell(30, 8, 'ชื่อ-นามสกุล:', 0, 0)
-    pdf.cell(60, 8, str(info.get("employee_name", "-")), border='B', ln=0)
-    pdf.cell(30, 8, 'แผนก:', 0, 0)
-    pdf.cell(60, 8, str(info.get("department", "-")), border='B', ln=1)
+    # บรรทัดที่ 2: ชื่อ-นามสกุล | แผนก
+    pdf.cell(30, 7, 'ชื่อ-นามสกุล:', 0, 0)
+    pdf.cell(60, 7, str(info.get("employee_name", "-")), border='B', ln=0)
+    pdf.cell(30, 7, 'แผนก:', 0, 0)
+    pdf.cell(60, 7, str(info.get("department", "-")), border='B', ln=1)
     
-    # บรรทัดที่ 3
-    pdf.cell(30, 8, 'วันที่จ่าย:', 0, 0)
-    pdf.cell(60, 8, str(info.get("pay_date", "-")), border='B', ln=0)
-    pdf.cell(30, 8, 'งวดที่:', 0, 0)
-    pdf.cell(60, 8, str(info.get("period", "-")), border='B', ln=1)
+    # บรรทัดที่ 3: วันที่เข้างาน | เลขที่บัญชี (เพิ่มใหม่)
+    pdf.cell(30, 7, 'วันที่เข้างาน:', 0, 0)
+    pdf.cell(60, 7, str(info.get("start_date", "-")), border='B', ln=0)
+    pdf.cell(30, 7, 'เลขที่บัญชี:', 0, 0)
+    pdf.cell(60, 7, str(info.get("account_no", "-")), border='B', ln=1)
     
-    pdf.ln(8)
+    # บรรทัดที่ 4: วันที่จ่าย | งวดที่
+    pdf.cell(30, 7, 'วันที่จ่าย:', 0, 0)
+    pdf.cell(60, 7, str(info.get("pay_date", "-")), border='B', ln=0)
+    pdf.cell(30, 7, 'งวดที่:', 0, 0)
+    pdf.cell(60, 7, str(info.get("period", "-")), border='B', ln=1)
     
-    # --- ส่วนตารางรายละเอียด ---
-    # ความกว้างของแต่ละคอลัมน์ (รวม 180 mm)
-    col_w = [35, 25, 35, 25, 35, 25]
+    pdf.ln(6)
+    
+    # --- ส่วนตารางรายละเอียด 6 คอลัมน์ ---
+    col_w = [35, 25, 35, 25, 40, 20] # ปรับขนาดคอลัมน์ YTD ให้กว้างขึ้นเพื่อใส่คำว่า กองทุนสำรองเลี้ยงชีพ
     h = 8
     
     # หัวตาราง
-    pdf.set_fill_color(240, 240, 240) # สีเทาอ่อน
+    pdf.set_fill_color(240, 240, 240)
     pdf.cell(col_w[0]+col_w[1], h, 'รายได้ (INCOME)', border=1, align='C', fill=True)
     pdf.cell(col_w[2]+col_w[3], h, 'รายการหัก (DEDUCTION)', border=1, align='C', fill=True)
     pdf.cell(col_w[4]+col_w[5], h, 'ยอดสะสม (YTD)', border=1, ln=1, align='C', fill=True)
     
-    # ฟังก์ชันตัวช่วยสำหรับวาดแถวข้อมูล
     def draw_row(c1, v1, c2, v2, c3, v3):
         pdf.cell(col_w[0], h, f' {c1}', border=1)
         pdf.cell(col_w[1], h, f'{v1} ', border=1, align='R')
@@ -62,11 +65,13 @@ def generate_payslip_pdf_bytes(info):
         pdf.cell(col_w[4], h, f' {c3}', border=1)
         pdf.cell(col_w[5], h, f'{v3} ', border=1, ln=1, align='R')
 
-    # ข้อมูลในตาราง
+    # ข้อมูลในตาราง (จัดเรียงตามรูปภาพเป๊ะๆ)
     draw_row('เงินเดือน', info.get('salary','0.00'), 'ภาษี', info.get('tax','0.00'), 'รายได้สะสม', info.get('ytd_income','-'))
     draw_row('ค่าล่วงเวลา (OT)', info.get('ot_amount','0.00'), 'ประกันสังคม', info.get('sso','0.00'), 'ภาษีสะสม', info.get('ytd_tax','-'))
-    draw_row('รายได้อื่นๆ', info.get('other_income','0.00'), 'ขาด/ลา/มาสาย', info.get('absent','0.00'), 'ประกันสังคมสะสม', info.get('ytd_sso','-'))
-    draw_row('', '', 'รายการหักอื่นๆ', info.get('other_deduct','0.00'), '', '')
+    draw_row('ค่าตำแหน่ง', info.get('position_allowance','0.00'), 'ขาด/ลา/มาสาย', info.get('absent','0.00'), 'ประกันสังคมสะสม', info.get('ytd_sso','-'))
+    draw_row('เบี้ยขยัน', info.get('diligence','0.00'), 'เบิกล่วงหน้า', info.get('advance','0.00'), 'กองทุนสำรองเลี้ยงชีพสะสม', info.get('ytd_provident','-'))
+    draw_row('ค่ากะ', info.get('shift_allowance','0.00'), 'เงินกู้', info.get('loan','0.00'), '', '')
+    draw_row('รายได้อื่นๆ', info.get('other_income','0.00'), 'รายการหักอื่นๆ', info.get('other_deduct','0.00'), '', '')
     
     # แถวสรุปยอดสุทธิ
     pdf.set_fill_color(230, 230, 230)
