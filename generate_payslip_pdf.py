@@ -1,93 +1,130 @@
-import os
 from fpdf import FPDF
+from io import BytesIO
 
-def generate_payslip_pdf_bytes(info):
-    pdf = FPDF(unit='mm', format='A4')
+# ล็อกชื่อผู้จ่ายเงิน
+SIGNER_NAME = "นายพงศ์พิพัช ประสาท"
+
+# ใช้ไฟล์ลายเซ็นที่มึงส่ง
+SIGNATURE_IMAGE = "547.png"
+
+
+class PayslipPDF(FPDF):
+    pass
+
+
+def generate_payslip_pdf_bytes(data):
+
+    pdf = PayslipPDF()
     pdf.add_page()
-    
-    font_path = "THSarabunNew.ttf"
-    if os.path.exists(font_path):
-        pdf.add_font('THSarabunNew', '', font_path, uni=True)
-        pdf.add_font('THSarabunNew', 'B', font_path, uni=True) # กรณีต้องการตัวหนา
-        pdf.set_font('THSarabunNew', '', 16)
-    else:
-        pdf.set_font('Arial', '', 12)
-        
-    # --- ส่วนหัวเอกสาร ---
-    pdf.set_font('THSarabunNew', '', 24)
-    pdf.cell(0, 10, 'ใบแจ้งยอดเงินเดือน / PAY SLIP', ln=True, align='C')
-    pdf.ln(5)
-    
-    # --- ส่วนข้อมูลพนักงาน (ปรับให้ตรงตามรูป) ---
-    pdf.set_font('THSarabunNew', '', 16)
-    
-    # บรรทัดที่ 1: รหัสพนักงาน | ตำแหน่ง
-    pdf.cell(30, 7, 'รหัสพนักงาน:', 0, 0)
-    pdf.cell(60, 7, str(info.get("emp_id", "-")), border='B', ln=0)
-    pdf.cell(30, 7, 'ตำแหน่ง:', 0, 0)
-    pdf.cell(60, 7, str(info.get("position", "-")), border='B', ln=1)
-    
-    # บรรทัดที่ 2: ชื่อ-นามสกุล | แผนก
-    pdf.cell(30, 7, 'ชื่อ-นามสกุล:', 0, 0)
-    pdf.cell(60, 7, str(info.get("employee_name", "-")), border='B', ln=0)
-    pdf.cell(30, 7, 'แผนก:', 0, 0)
-    pdf.cell(60, 7, str(info.get("department", "-")), border='B', ln=1)
-    
-    # บรรทัดที่ 3: วันที่เข้างาน | เลขที่บัญชี (เพิ่มใหม่)
-    pdf.cell(30, 7, 'วันที่เข้างาน:', 0, 0)
-    pdf.cell(60, 7, str(info.get("start_date", "-")), border='B', ln=0)
-    pdf.cell(30, 7, 'เลขที่บัญชี:', 0, 0)
-    pdf.cell(60, 7, str(info.get("account_no", "-")), border='B', ln=1)
-    
-    # บรรทัดที่ 4: วันที่จ่าย | งวดที่
-    pdf.cell(30, 7, 'วันที่จ่าย:', 0, 0)
-    pdf.cell(60, 7, str(info.get("pay_date", "-")), border='B', ln=0)
-    pdf.cell(30, 7, 'งวดที่:', 0, 0)
-    pdf.cell(60, 7, str(info.get("period", "-")), border='B', ln=1)
-    
-    pdf.ln(6)
-    
-    # --- ส่วนตารางรายละเอียด 6 คอลัมน์ ---
-    col_w = [35, 25, 35, 25, 40, 20] # ปรับขนาดคอลัมน์ YTD ให้กว้างขึ้นเพื่อใส่คำว่า กองทุนสำรองเลี้ยงชีพ
-    h = 8
-    
-    # หัวตาราง
-    pdf.set_fill_color(240, 240, 240)
-    pdf.cell(col_w[0]+col_w[1], h, 'รายได้ (INCOME)', border=1, align='C', fill=True)
-    pdf.cell(col_w[2]+col_w[3], h, 'รายการหัก (DEDUCTION)', border=1, align='C', fill=True)
-    pdf.cell(col_w[4]+col_w[5], h, 'ยอดสะสม (YTD)', border=1, ln=1, align='C', fill=True)
-    
-    def draw_row(c1, v1, c2, v2, c3, v3):
-        pdf.cell(col_w[0], h, f' {c1}', border=1)
-        pdf.cell(col_w[1], h, f'{v1} ', border=1, align='R')
-        pdf.cell(col_w[2], h, f' {c2}', border=1)
-        pdf.cell(col_w[3], h, f'{v2} ', border=1, align='R')
-        pdf.cell(col_w[4], h, f' {c3}', border=1)
-        pdf.cell(col_w[5], h, f'{v3} ', border=1, ln=1, align='R')
+    pdf.set_auto_page_break(auto=True, margin=15)
 
-    # ข้อมูลในตาราง (จัดเรียงตามรูปภาพเป๊ะๆ)
-    draw_row('เงินเดือน', info.get('salary','0.00'), 'ภาษี', info.get('tax','0.00'), 'รายได้สะสม', info.get('ytd_income','-'))
-    draw_row('ค่าล่วงเวลา (OT)', info.get('ot_amount','0.00'), 'ประกันสังคม', info.get('sso','0.00'), 'ภาษีสะสม', info.get('ytd_tax','-'))
-    draw_row('ค่าตำแหน่ง', info.get('position_allowance','0.00'), 'ขาด/ลา/มาสาย', info.get('absent','0.00'), 'ประกันสังคมสะสม', info.get('ytd_sso','-'))
-    draw_row('เบี้ยขยัน', info.get('diligence','0.00'), 'เบิกล่วงหน้า', info.get('advance','0.00'), 'กองทุนสำรองเลี้ยงชีพสะสม', info.get('ytd_provident','-'))
-    draw_row('ค่ากะ', info.get('shift_allowance','0.00'), 'เงินกู้', info.get('loan','0.00'), '', '')
-    draw_row('รายได้อื่นๆ', info.get('other_income','0.00'), 'รายการหักอื่นๆ', info.get('other_deduct','0.00'), '', '')
-    
-    # แถวสรุปยอดสุทธิ
-    pdf.set_fill_color(230, 230, 230)
-    pdf.cell(col_w[0], h+2, ' รวมรายได้', border=1, align='C', fill=True)
-    pdf.cell(col_w[1], h+2, f"{info.get('income_sum','0.00')} ", border=1, align='R', fill=True)
-    pdf.cell(col_w[2], h+2, ' รวมรายการหัก', border=1, align='C', fill=True)
-    pdf.cell(col_w[3], h+2, f"{info.get('deduction_sum','0.00')} ", border=1, align='R', fill=True)
-    pdf.cell(col_w[4], h+2, ' เงินได้สุทธิ', border=1, align='C', fill=True)
-    pdf.cell(col_w[5], h+2, f"{info.get('net_pay','0.00')} ", border=1, align='R', fill=True)
-    
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.cell(0, 10, "PAY SLIP", 0, 1, "C")
+
+    pdf.ln(5)
+    pdf.set_font("Helvetica", size=12)
+
+    # =====================
+    # ข้อมูลพนักงาน
+    # =====================
+
+    pdf.cell(95, 8, f"ชื่อพนักงาน: {data['name']}", 0, 0)
+    pdf.cell(95, 8, f"ตำแหน่ง: {data['position']}", 0, 1)
+
+    pdf.cell(95, 8, f"วันที่เริ่มงาน: {data['start_date']}", 0, 0)
+    pdf.cell(95, 8, f"เลขบัญชี: {data['account']}", 0, 1)
+
+    pdf.cell(95, 8, f"ประจำเดือน: {data['month']}", 0, 0)
+    pdf.cell(95, 8, f"วันที่จ่าย: {data['pay_date']}", 0, 1)
+
+    pdf.ln(5)
+
+    # =====================
+    # ตารางรายได้
+    # =====================
+
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(95, 8, "รายการรายได้", 1, 0, "C")
+    pdf.cell(95, 8, "จำนวนเงิน", 1, 1, "C")
+
+    pdf.set_font("Helvetica", size=12)
+
+    def row(title, value):
+        pdf.cell(95, 8, title, 1, 0)
+        pdf.cell(95, 8, f"{value:,.2f}", 1, 1, "R")
+
+    row("ค่าจ้าง", data["wage"])
+    row("ค่าตำแหน่ง", data["pos_allow"])
+    row("ค่าทำงานวันหยุด", data["holiday"])
+    row("OT", data["ot"])
+    row("เบี้ยขยัน", data["diligence"])
+    row("ค่าเป้า", data["target"])
+    row("อื่นๆ", data["other"])
+
+    pdf.cell(95, 8, "รวมรายได้", 1, 0)
+    pdf.cell(95, 8, f"{data['income_sum']:,.2f}", 1, 1, "R")
+
+    pdf.ln(5)
+
+    # =====================
+    # ตารางหักเงิน
+    # =====================
+
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(95, 8, "รายการหัก", 1, 0, "C")
+    pdf.cell(95, 8, "จำนวนเงิน", 1, 1, "C")
+
+    pdf.set_font("Helvetica", size=12)
+
+    row("จ่ายล่วงหน้า", data["advance"])
+    row("ค่าประกันชุด", data["uniform"])
+    row("ขาดงาน", data["absent"])
+    row("ลากิจ/ป่วย", data["leave"])
+    row("สาย", data["late"])
+    row("ภาษี", data["tax"])
+
+    pdf.cell(95, 8, "รวมรายการหัก", 1, 0)
+    pdf.cell(95, 8, f"{data['deduct_sum']:,.2f}", 1, 1, "R")
+
+    pdf.ln(5)
+
+    # =====================
+    # เงินสุทธิ
+    # =====================
+
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(95, 10, "เงินสุทธิ", 1, 0, "C")
+    pdf.cell(95, 10, f"{data['net']:,.2f}", 1, 1, "R")
+
+    pdf.ln(10)
+
+    pdf.set_font("Helvetica", size=12)
+    pdf.cell(0, 8, f"เงินได้สะสม: {data['ytd']:,.2f}", 0, 1)
+
+    # =====================
+    # ลายเซ็น (ล็อกตายตัว)
+    # =====================
+
     pdf.ln(25)
-    
-    # --- ส่วนลายเซ็น ---
-    pdf.cell(90, 8, '________________________________', 0, 0, 'C')
-    pdf.cell(90, 8, '________________________________', 0, 1, 'C')
-    pdf.cell(90, 8, 'ผู้จ่ายเงิน', 0, 0, 'C')
-    pdf.cell(90, 8, 'ผู้รับเงิน / พนักงาน', 0, 1, 'C')
-    
-    return bytes(pdf.output())
+
+    signature_x = 140
+    signature_y = pdf.get_y()
+
+    # ลายเซ็นภาพ
+    pdf.image(SIGNATURE_IMAGE, x=signature_x, y=signature_y, w=40)
+
+    # ชื่อใต้ลายเซ็น
+    pdf.set_y(signature_y + 25)
+    pdf.set_x(signature_x)
+
+    pdf.set_font("Helvetica", size=12)
+    pdf.cell(40, 8, SIGNER_NAME, 0, 1, "C")
+
+    # =====================
+    # ส่ง PDF กลับ
+    # =====================
+
+    buffer = BytesIO()
+    pdf.output(buffer)
+
+    return buffer.getvalue()
