@@ -1,138 +1,241 @@
-from fpdf import FPDF
-from io import BytesIO
+import streamlit as st
+import pandas as pd
+import os
+from datetime import date
+from generate_payslip_pdf import generate_payslip_pdf_bytes
 
-SIGNER_NAME = "นายพงศ์พิพัช ประสาท"
-SIGNATURE_IMAGE = "547.png"
-
-
-class PayslipPDF(FPDF):
-    pass
+EMP_FILE = "database_employees.csv"
 
 
-def generate_payslip_pdf_bytes(data):
+# =========================
+# โหลดฐานข้อมูล
+# =========================
 
-    pdf = PayslipPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
+def load_employees():
 
-    pdf.add_font("THSarabun", "", "THSarabunNew.ttf", uni=True)
-    pdf.set_font("THSarabun", "", 16)
+    if os.path.exists(EMP_FILE):
+        return pd.read_csv(EMP_FILE, encoding="utf-8-sig")
 
-    # ======================
-    # หัวเอกสาร (แก้ตามที่สั่ง)
-    # ======================
+    df = pd.DataFrame(columns=[
+        "name",
+        "position",
+        "account",
+        "start_date"
+    ])
 
-    pdf.set_font("THSarabun", "", 18)
+    df.to_csv(EMP_FILE, index=False, encoding="utf-8-sig")
 
-    pdf.set_font("THSarabun", "B", 22)
-    pdf.cell(0, 12, "สลิปเงินเดือน / Pay Slip", 0, 1, "R")
+    return df
 
-    pdf.ln(2)
 
-    pdf.set_font("THSarabun", "", 16)
-    pdf.cell(0, 8, f"บริษัท : {data['company']}", 0, 1, "L")
+employees = load_employees()
 
-    pdf.ln(3)
+st.title("โปรแกรมออกสลิปเงินเดือน")
 
-    pdf.cell(95, 8, f"ชื่อ-สกุล : {data['name']}", 0, 0)
-    pdf.cell(95, 8, f"ประจำเดือน : {data['month']}", 0, 1)
 
-    pdf.cell(95, 8, f"ตำแหน่ง : {data['position']}", 0, 0)
-    pdf.cell(95, 8, f"เลขที่บัญชี : {data['account']}", 0, 1)
+# =========================
+# เลือก / กรอกพนักงาน
+# =========================
 
-    pdf.cell(95, 8, f"วันที่เริ่มงาน : {data['start_date']}", 0, 0)
-    pdf.cell(95, 8, f"วันที่จ่ายเงิน : {data['pay_date']}", 0, 1)
+st.subheader("ข้อมูลพนักงาน")
 
-    pdf.ln(3)
+if "name_input" not in st.session_state:
+    st.session_state.name_input = ""
 
-    # ======================
-    # ตั้งค่าความกว้างตาราง
-    # ======================
+colA, colB = st.columns(2)
 
-    w1 = 45
-    w2 = 20
-    w3 = 15
-    w4 = 30
-    w5 = 40
-    w6 = 30
+with colA:
 
-    table_width = w1 + w2 + w3 + w4 + w5 + w6
+    name = st.text_input(
+        "ชื่อพนักงาน",
+        key="name_input"
+    )
 
-    page_width = 210
-    start_x = (page_width - table_width) / 2
+with colB:
 
-    pdf.set_x(start_x)
+    selected = st.selectbox(
+        "เลือกจากฐานข้อมูล",
+        [""] + employees["name"].tolist()
+    )
 
-    # ======================
-    # หัวตาราง
-    # ======================
+    if selected:
+        st.session_state.name_input = selected
+        name = selected
 
-    pdf.cell(w1 + w2 + w3, 8, "รายการเงินได้", 1, 0, "C")
-    pdf.cell(w4, 8, "จำนวนเงิน", 1, 0, "C")
-    pdf.cell(w5, 8, "รายการเงินหัก", 1, 0, "C")
-    pdf.cell(w6, 8, "จำนวนเงิน", 1, 1, "C")
 
-    def row(l1="", l2="", l3="", l4="", r1="", r2=""):
+# =========================
+# ข้อมูลบริษัท
+# =========================
 
-        pdf.set_x(start_x)
+company = st.text_input("บริษัท")
 
-        pdf.cell(w1, 8, l1, 1)
-        pdf.cell(w2, 8, l2, 1, 0, "R")
-        pdf.cell(w3, 8, l3, 1, 0, "C")
-        pdf.cell(w4, 8, l4, 1, 0, "R")
-        pdf.cell(w5, 8, r1, 1)
-        pdf.cell(w6, 8, r2, 1, 1, "R")
+col1, col2 = st.columns(2)
 
-    row("ค่าจ้าง", f"{data['wage_rate']}", "ชม.", f"{data['wage']:,.2f}", "จ่ายล่วงหน้า", f"{data['advance']:,.2f}")
-    row("ค่าตำแหน่ง", "", "", f"{data['pos_allow']:,.2f}", "ค่าประกันชุด", f"{data['uniform']:,.2f}")
-    row("ค่าทำงานในวันหยุด", "", "", f"{data['holiday']:,.2f}", "ขาดงาน", f"{data['absent']:,.2f}")
-    row("ค่าล่วงเวลา OT.", f"{data['ot_hours']}", "ชม.", f"{data['ot']:,.2f}", "ลากิจ+ป่วย", f"{data['leave']:,.2f}")
-    row("ค่าเบี้ยขยัน", "", "", f"{data['diligence']:,.2f}", "สาย - นาที", f"{data['late']:,.2f}")
-    row("ค่าเป้าหมาย", "", "", f"{data['target']:,.2f}", "ภาษี", f"{data['tax']:,.2f}")
-    row("อื่นๆ", "", "", f"{data['other']:,.2f}", "", "")
+with col1:
+    month = st.text_input("ประจำเดือน", "มีนาคม 2569")
 
-    pdf.set_x(start_x)
+with col2:
+    pay_date = st.date_input("วันที่จ่ายเงิน", date.today())
 
-    pdf.cell(w1 + w2 + w3, 8, "รวมรายรับ", 1, 0, "C")
-    pdf.cell(w4, 8, f"{data['income_sum']:,.2f}", 1, 0, "R")
-    pdf.cell(w5, 8, "รวมรายการหัก", 1, 0, "C")
-    pdf.cell(w6, 8, f"{data['deduct_sum']:,.2f}", 1, 1, "R")
 
-    pdf.ln(6)
+# =========================
+# รายได้
+# =========================
 
-    # ======================
-    # เงินสุทธิ
-    # ======================
+st.subheader("รายการรายได้")
 
-    pdf.set_font("THSarabun", "", 18)
+c1, c2 = st.columns(2)
 
-    pdf.cell(120, 10, "รวมรับเงินสุทธิ", 0, 0, "C")
-    pdf.cell(60, 10, f"{data['net']:,.2f}", "B", 1, "R")
+with c1:
 
-    pdf.ln(5)
+    wage_rate = st.number_input("ค่าแรงต่อชั่วโมง", 0.0)
 
-    pdf.set_font("THSarabun", "", 16)
-    pdf.cell(60, 8, "เงินได้สะสม", 0, 0)
-    pdf.cell(60, 8, f"{data['ytd']:,.2f}", 0, 1)
+    wage = st.number_input("ค่าจ้างรวม", 0.0)
 
-    # ======================
-    # ลายเซ็น
-    # ======================
+    pos_allow = st.number_input("ค่าตำแหน่ง", 0.0)
 
-    pdf.ln(15)
+    holiday = st.number_input("ค่าทำงานวันหยุด", 0.0)
 
-    sig_x = 140
-    sig_y = pdf.get_y()
+with c2:
 
-    pdf.image(SIGNATURE_IMAGE, sig_x, sig_y, 40)
+    ot_hours = st.number_input("OT ชั่วโมง", 0.0)
 
-    pdf.set_y(sig_y + 25)
-    pdf.set_x(sig_x)
+    ot = st.number_input("ค่า OT", 0.0)
 
-    pdf.cell(40, 8, SIGNER_NAME, 0, 1, "C")
+    diligence = st.number_input("เบี้ยขยัน", 0.0)
 
-    buffer = BytesIO()
-    pdf.output(buffer)
+    target = st.number_input("ค่าเป้า", 0.0)
 
-    return buffer.getvalue()
+    other = st.number_input("อื่นๆ", 0.0)
 
+
+# =========================
+# รายการหัก
+# =========================
+
+st.subheader("รายการหัก")
+
+c3, c4 = st.columns(2)
+
+with c3:
+
+    advance = st.number_input("จ่ายล่วงหน้า", 0.0)
+
+    uniform = st.number_input("ค่าประกันชุด", 0.0)
+
+    absent = st.number_input("ขาดงาน", 0.0)
+
+with c4:
+
+    leave = st.number_input("ลากิจ / ป่วย", 0.0)
+
+    late = st.number_input("สาย", 0.0)
+
+    tax = st.number_input("ภาษี", 0.0)
+
+
+# =========================
+# เงินสะสม
+# =========================
+
+ytd = st.number_input("เงินได้สะสม", 0.0)
+
+
+# =========================
+# คำนวณ
+# =========================
+
+income_sum = (
+    wage
+    + pos_allow
+    + holiday
+    + ot
+    + diligence
+    + target
+    + other
+)
+
+deduct_sum = (
+    advance
+    + uniform
+    + absent
+    + leave
+    + late
+    + tax
+)
+
+net = income_sum - deduct_sum
+
+
+# =========================
+# สรุป
+# =========================
+
+st.subheader("สรุป")
+
+s1, s2, s3 = st.columns(3)
+
+with s1:
+    st.metric("รวมรายได้", f"{income_sum:,.2f}")
+
+with s2:
+    st.metric("รวมรายการหัก", f"{deduct_sum:,.2f}")
+
+with s3:
+    st.metric("เงินสุทธิ", f"{net:,.2f}")
+
+
+# =========================
+# สร้าง PDF
+# =========================
+
+if st.button("สร้าง Pay Slip"):
+
+    data = {
+
+        "company": company,
+
+        "name": name,
+        "position": "",
+        "account": "",
+        "start_date": "",
+
+        "month": month,
+        "pay_date": pay_date.strftime("%d-%m-%Y"),
+
+        "wage_rate": wage_rate,
+        "wage": wage,
+
+        "pos_allow": pos_allow,
+        "holiday": holiday,
+
+        "ot_hours": ot_hours,
+        "ot": ot,
+
+        "diligence": diligence,
+        "target": target,
+        "other": other,
+
+        "advance": advance,
+        "uniform": uniform,
+        "absent": absent,
+
+        "leave": leave,
+        "late": late,
+        "tax": tax,
+
+        "income_sum": income_sum,
+        "deduct_sum": deduct_sum,
+
+        "net": net,
+        "ytd": ytd
+    }
+
+    pdf = generate_payslip_pdf_bytes(data)
+
+    st.download_button(
+        "ดาวน์โหลด PDF",
+        pdf,
+        file_name=f"payslip_{name}.pdf",
+        mime="application/pdf"
+    )
