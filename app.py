@@ -2,14 +2,13 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import date
-
 from generate_payslip_pdf import generate_payslip_pdf_bytes
 
 EMP_FILE = "database_employees.csv"
 
 
 # =========================
-# โหลดฐานข้อมูลพนักงาน
+# โหลดฐานข้อมูล
 # =========================
 
 def load_employees():
@@ -25,6 +24,7 @@ def load_employees():
     ])
 
     df.to_csv(EMP_FILE, index=False, encoding="utf-8-sig")
+
     return df
 
 
@@ -34,39 +34,40 @@ st.title("โปรแกรมออกสลิปเงินเดือน"
 
 
 # =========================
+# เลือก / กรอกพนักงาน
+# =========================
+
+st.subheader("ข้อมูลพนักงาน")
+
+if "name_input" not in st.session_state:
+    st.session_state.name_input = ""
+
+colA, colB = st.columns(2)
+
+with colA:
+
+    name = st.text_input(
+        "ชื่อพนักงาน",
+        key="name_input"
+    )
+
+with colB:
+
+    selected = st.selectbox(
+        "เลือกจากฐานข้อมูล",
+        [""] + employees["name"].tolist()
+    )
+
+    if selected:
+        st.session_state.name_input = selected
+        name = selected
+
+
+# =========================
 # ข้อมูลบริษัท
 # =========================
 
-company = st.text_input("ชื่อบริษัท")
-
-
-# =========================
-# เลือกพนักงาน
-# =========================
-
-name = st.selectbox(
-    "เลือกพนักงาน",
-    employees["name"] if not employees.empty else []
-)
-
-employee = employees[employees["name"] == name]
-
-if not employee.empty:
-    employee = employee.iloc[0]
-
-    position = employee["position"]
-    account = employee["account"]
-    start_date = employee["start_date"]
-
-else:
-    position = ""
-    account = ""
-    start_date = ""
-
-
-# =========================
-# ข้อมูลสลิป
-# =========================
+company = st.text_input("บริษัท")
 
 col1, col2 = st.columns(2)
 
@@ -167,7 +168,7 @@ net = income_sum - deduct_sum
 
 
 # =========================
-# แสดงสรุป
+# สรุป
 # =========================
 
 st.subheader("สรุป")
@@ -195,9 +196,9 @@ if st.button("สร้าง Pay Slip"):
         "company": company,
 
         "name": name,
-        "position": position,
-        "account": account,
-        "start_date": start_date,
+        "position": "",
+        "account": "",
+        "start_date": "",
 
         "month": month,
         "pay_date": pay_date.strftime("%d-%m-%Y"),
