@@ -19,13 +19,15 @@ def generate_payslip_pdf_bytes(data):
     pdf.set_font("THSarabun", "", 16)
 
     # ======================
-    # หัวเอกสาร
+    # หัวเอกสาร (แก้ตามที่สั่ง)
     # ======================
 
-    pdf.set_font("THSarabun", "", 20)
-    pdf.cell(0, 10, "ใบแจ้งรายได้ PAY SLIP", 0, 1, "C")
+    pdf.set_font("THSarabun", "", 18)
 
-    pdf.set_font("THSarabun", "", 16)
+    pdf.cell(100, 10, data["company"], 0, 0, "L")  # ชื่อบริษัทซ้าย
+    pdf.cell(0, 10, "สลิปเงินเดือน / Pay Slip", 0, 1, "R")  # ชื่อเอกสารขวา
+
+    pdf.ln(3)
 
     pdf.cell(95, 8, f"ชื่อ-สกุล : {data['name']}", 0, 0)
     pdf.cell(95, 8, f"ประจำเดือน : {data['month']}", 0, 1)
@@ -39,17 +41,26 @@ def generate_payslip_pdf_bytes(data):
     pdf.ln(3)
 
     # ======================
-    # ตารางหลัก
+    # ตั้งค่าความกว้างตาราง
     # ======================
 
-    w1 = 55
+    w1 = 45
     w2 = 20
-    w3 = 20
-    w4 = 35
+    w3 = 15
+    w4 = 30
     w5 = 40
     w6 = 30
 
-    pdf.set_font("THSarabun", "", 16)
+    table_width = w1 + w2 + w3 + w4 + w5 + w6
+
+    page_width = 210
+    start_x = (page_width - table_width) / 2
+
+    pdf.set_x(start_x)
+
+    # ======================
+    # หัวตาราง
+    # ======================
 
     pdf.cell(w1 + w2 + w3, 8, "รายการเงินได้", 1, 0, "C")
     pdf.cell(w4, 8, "จำนวนเงิน", 1, 0, "C")
@@ -57,6 +68,9 @@ def generate_payslip_pdf_bytes(data):
     pdf.cell(w6, 8, "จำนวนเงิน", 1, 1, "C")
 
     def row(l1="", l2="", l3="", l4="", r1="", r2=""):
+
+        pdf.set_x(start_x)
+
         pdf.cell(w1, 8, l1, 1)
         pdf.cell(w2, 8, l2, 1, 0, "R")
         pdf.cell(w3, 8, l3, 1, 0, "C")
@@ -72,6 +86,8 @@ def generate_payslip_pdf_bytes(data):
     row("ค่าเป้าหมาย", "", "", f"{data['target']:,.2f}", "ภาษี", f"{data['tax']:,.2f}")
     row("อื่นๆ", "", "", f"{data['other']:,.2f}", "", "")
 
+    pdf.set_x(start_x)
+
     pdf.cell(w1 + w2 + w3, 8, "รวมรายรับ", 1, 0, "C")
     pdf.cell(w4, 8, f"{data['income_sum']:,.2f}", 1, 0, "R")
     pdf.cell(w5, 8, "รวมรายการหัก", 1, 0, "C")
@@ -86,10 +102,6 @@ def generate_payslip_pdf_bytes(data):
     pdf.set_font("THSarabun", "", 18)
 
     pdf.cell(120, 10, "รวมรับเงินสุทธิ", 0, 0, "C")
-
-    x = pdf.get_x()
-    y = pdf.get_y()
-
     pdf.cell(60, 10, f"{data['net']:,.2f}", "B", 1, "R")
 
     pdf.ln(5)
@@ -113,10 +125,6 @@ def generate_payslip_pdf_bytes(data):
     pdf.set_x(sig_x)
 
     pdf.cell(40, 8, SIGNER_NAME, 0, 1, "C")
-
-    # ======================
-    # export pdf
-    # ======================
 
     buffer = BytesIO()
     pdf.output(buffer)
