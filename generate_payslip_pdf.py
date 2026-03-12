@@ -15,15 +15,14 @@ def generate_payslip_pdf_bytes(data):
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # โหลดฟอนต์ไทย
+    # โหลดฟอนต์ไทย (ใช้ตัวเดียว)
     pdf.add_font("THSarabun", "", "THSarabunNew.ttf", uni=True)
-    pdf.add_font("THSarabun", "B", "THSarabunNew-Bold.ttf", uni=True)
 
     # ======================
     # หัวเอกสาร
     # ======================
 
-    pdf.set_font("THSarabun", "B", 22)
+    pdf.set_font("THSarabun", "", 22)
     pdf.cell(0, 12, "สลิปเงินเดือน / Pay Slip", 0, 1, "R")
 
     pdf.ln(2)
@@ -49,7 +48,7 @@ def generate_payslip_pdf_bytes(data):
     pdf.ln(4)
 
     # ======================
-    # ตั้งค่าตารางให้อยู่กลางกระดาษ
+    # ตาราง (จัดกลางกระดาษ)
     # ======================
 
     w1 = 45
@@ -60,8 +59,8 @@ def generate_payslip_pdf_bytes(data):
     w6 = 30
 
     table_width = w1 + w2 + w3 + w4 + w5 + w6
-
     page_width = 210
+
     start_x = (page_width - table_width) / 2
 
     # ======================
@@ -107,7 +106,7 @@ def generate_payslip_pdf_bytes(data):
     # เงินสุทธิ
     # ======================
 
-    pdf.set_font("THSarabun", "B", 18)
+    pdf.set_font("THSarabun", "", 18)
 
     pdf.cell(120, 10, "รวมรับเงินสุทธิ", 0, 0, "C")
     pdf.cell(60, 10, f"{data['net']:,.2f}", "B", 1, "R")
@@ -132,7 +131,6 @@ def generate_payslip_pdf_bytes(data):
     pdf.set_y(sig_y + 25)
     pdf.set_x(sig_x)
 
-    pdf.set_font("THSarabun", "", 16)
     pdf.cell(40, 8, SIGNER_NAME, 0, 1, "C")
 
     # ======================
