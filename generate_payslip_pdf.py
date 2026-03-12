@@ -24,8 +24,13 @@ def generate_payslip_pdf_bytes(data):
 
     pdf.set_font("THSarabun", "", 18)
 
-    pdf.cell(100, 10, data["company"], 0, 0, "L")  # ชื่อบริษัทซ้าย
-    pdf.cell(0, 10, "สลิปเงินเดือน / Pay Slip", 0, 1, "R")  # ชื่อเอกสารขวา
+    pdf.set_font("THSarabun", "B", 22)
+    pdf.cell(0, 12, "สลิปเงินเดือน / Pay Slip", 0, 1, "R")
+
+    pdf.ln(2)
+
+    pdf.set_font("THSarabun", "", 16)
+    pdf.cell(0, 8, f"บริษัท : {data['company']}", 0, 1, "L")
 
     pdf.ln(3)
 
@@ -130,3 +135,4 @@ def generate_payslip_pdf_bytes(data):
     pdf.output(buffer)
 
     return buffer.getvalue()
+
