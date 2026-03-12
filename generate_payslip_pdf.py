@@ -15,7 +15,9 @@ def generate_payslip_pdf_bytes(data):
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
+    # โหลดฟอนต์ไทย
     pdf.add_font("THSarabun", "", "THSarabunNew.ttf", uni=True)
+    pdf.add_font("THSarabun", "B", "THSarabunNew-Bold.ttf", uni=True)
 
     # ======================
     # หัวเอกสาร
@@ -47,7 +49,7 @@ def generate_payslip_pdf_bytes(data):
     pdf.ln(4)
 
     # ======================
-    # ตั้งค่าตารางให้อยู่กลาง
+    # ตั้งค่าตารางให้อยู่กลางกระดาษ
     # ======================
 
     w1 = 45
@@ -62,11 +64,11 @@ def generate_payslip_pdf_bytes(data):
     page_width = 210
     start_x = (page_width - table_width) / 2
 
-    pdf.set_x(start_x)
-
     # ======================
     # หัวตาราง
     # ======================
+
+    pdf.set_x(start_x)
 
     pdf.cell(w1 + w2 + w3, 8, "รายการเงินได้", 1, 0, "C")
     pdf.cell(w4, 8, "จำนวนเงิน", 1, 0, "C")
