@@ -1,8 +1,11 @@
+```python
 import streamlit as st
 import pandas as pd
 import os
 from datetime import date
 from generate_payslip_pdf import generate_payslip_pdf_bytes
+
+st.set_page_config(layout="wide")
 
 EMP_FILE = "database_employees.csv"
 
@@ -34,13 +37,25 @@ st.title("โปรแกรมออกสลิปเงินเดือน"
 
 
 # =========================
+# SESSION STATE
+# =========================
+
+if "name_input" not in st.session_state:
+    st.session_state.name_input = ""
+
+if "employee_select" not in st.session_state:
+    st.session_state.employee_select = ""
+
+
+def sync_name():
+    st.session_state.name_input = st.session_state.employee_select
+
+
+# =========================
 # เลือก / กรอกพนักงาน
 # =========================
 
 st.subheader("ข้อมูลพนักงาน")
-
-if "name_input" not in st.session_state:
-    st.session_state.name_input = ""
 
 colA, colB = st.columns(2)
 
@@ -55,12 +70,10 @@ with colB:
 
     selected = st.selectbox(
         "เลือกจากฐานข้อมูล",
-        [""] + employees["name"].tolist()
+        [""] + employees["name"].tolist(),
+        key="employee_select",
+        on_change=sync_name
     )
-
-    if selected:
-        st.session_state.name_input = selected
-        name = selected
 
 
 # =========================
@@ -239,3 +252,4 @@ if st.button("สร้าง Pay Slip"):
         file_name=f"payslip_{name}.pdf",
         mime="application/pdf"
     )
+```
