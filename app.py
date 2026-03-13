@@ -9,10 +9,6 @@ st.set_page_config(layout="wide")
 EMP_FILE = "database_employees.csv"
 
 
-# =========================
-# โหลดฐานข้อมูล
-# =========================
-
 def load_employees():
 
     if os.path.exists(EMP_FILE):
@@ -35,10 +31,6 @@ employees = load_employees()
 st.title("โปรแกรมออกสลิปเงินเดือน")
 
 
-# =========================
-# SESSION STATE
-# =========================
-
 if "name_input" not in st.session_state:
     st.session_state.name_input = ""
 
@@ -49,10 +41,6 @@ if "employee_select" not in st.session_state:
 def sync_name():
     st.session_state.name_input = st.session_state.employee_select
 
-
-# =========================
-# เลือก / กรอกพนักงาน
-# =========================
 
 st.subheader("ข้อมูลพนักงาน")
 
@@ -75,10 +63,6 @@ with colB:
     )
 
 
-# =========================
-# ข้อมูลบริษัท
-# =========================
-
 company = st.text_input("บริษัท")
 
 col1, col2 = st.columns(2)
@@ -89,10 +73,6 @@ with col1:
 with col2:
     pay_date = st.date_input("วันที่จ่ายเงิน", date.today())
 
-
-# =========================
-# รายได้
-# =========================
 
 st.subheader("รายการรายได้")
 
@@ -121,10 +101,6 @@ with c2:
     other = st.number_input("อื่นๆ", 0.0)
 
 
-# =========================
-# รายการหัก
-# =========================
-
 st.subheader("รายการหัก")
 
 c3, c4 = st.columns(2)
@@ -146,16 +122,8 @@ with c4:
     tax = st.number_input("ภาษี", 0.0)
 
 
-# =========================
-# เงินสะสม
-# =========================
-
 ytd = st.number_input("เงินได้สะสม", 0.0)
 
-
-# =========================
-# คำนวณ
-# =========================
 
 income_sum = (
     wage
@@ -179,10 +147,6 @@ deduct_sum = (
 net = income_sum - deduct_sum
 
 
-# =========================
-# สรุป
-# =========================
-
 st.subheader("สรุป")
 
 s1, s2, s3 = st.columns(3)
@@ -196,10 +160,6 @@ with s2:
 with s3:
     st.metric("เงินสุทธิ", f"{net:,.2f}")
 
-
-# =========================
-# สร้าง PDF
-# =========================
 
 if st.button("สร้าง Pay Slip"):
 
@@ -251,5 +211,3 @@ if st.button("สร้าง Pay Slip"):
         file_name=f"payslip_{name}.pdf",
         mime="application/pdf"
     )
-```
-
