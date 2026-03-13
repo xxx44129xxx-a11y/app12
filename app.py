@@ -9,6 +9,10 @@ st.set_page_config(layout="wide")
 EMP_FILE = "database_employees.csv"
 
 
+# =========================
+# DATABASE FUNCTIONS
+# =========================
+
 def load_employees():
 
     if os.path.exists(EMP_FILE):
@@ -26,10 +30,16 @@ def load_employees():
     return df
 
 
+def save_employees(df):
+    df.to_csv(EMP_FILE, index=False, encoding="utf-8-sig")
+
+
 employees = load_employees()
 
-st.title("โปรแกรมออกสลิปเงินเดือน")
 
+# =========================
+# SESSION STATE
+# =========================
 
 if "name_input" not in st.session_state:
     st.session_state.name_input = ""
@@ -42,172 +52,256 @@ def sync_name():
     st.session_state.name_input = st.session_state.employee_select
 
 
-st.subheader("ข้อมูลพนักงาน")
+st.title("โปรแกรมออกสลิปเงินเดือน")
 
-colA, colB = st.columns(2)
+tab1, tab2 = st.tabs(["ออกสลิปเงินเดือน", "จัดการพนักงาน"])
 
-with colA:
 
-    name = st.text_input(
-        "ชื่อพนักงาน",
-        key="name_input"
+# ======================================================
+# TAB 1 : PAYSLIP
+# ======================================================
+
+with tab1:
+
+    st.subheader("ข้อมูลพนักงาน")
+
+    colA, colB = st.columns(2)
+
+    with colA:
+
+        name = st.text_input(
+            "ชื่อพนักงาน",
+            key="name_input"
+        )
+
+    with colB:
+
+        selected = st.selectbox(
+            "เลือกจากฐานข้อมูล",
+            [""] + employees["name"].tolist(),
+            key="employee_select",
+            on_change=sync_name
+        )
+
+    company = st.text_input("บริษัท")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        month = st.text_input("ประจำเดือน", "มีนาคม 2569")
+
+    with col2:
+        pay_date = st.date_input("วันที่จ่ายเงิน", date.today())
+
+    # =========================
+    # รายได้
+    # =========================
+
+    st.subheader("รายการรายได้")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+
+        wage_rate = st.number_input("ค่าแรงต่อชั่วโมง", 0.0)
+
+        wage = st.number_input("ค่าจ้างรวม", 0.0)
+
+        pos_allow = st.number_input("ค่าตำแหน่ง", 0.0)
+
+        holiday = st.number_input("ค่าทำงานวันหยุด", 0.0)
+
+    with c2:
+
+        ot_hours = st.number_input("OT ชั่วโมง", 0.0)
+
+        ot = st.number_input("ค่า OT", 0.0)
+
+        diligence = st.number_input("เบี้ยขยัน", 0.0)
+
+        target = st.number_input("ค่าเป้า", 0.0)
+
+        other = st.number_input("อื่นๆ", 0.0)
+
+    # =========================
+    # รายการหัก
+    # =========================
+
+    st.subheader("รายการหัก")
+
+    c3, c4 = st.columns(2)
+
+    with c3:
+
+        advance = st.number_input("จ่ายล่วงหน้า", 0.0)
+
+        uniform = st.number_input("ค่าประกันชุด", 0.0)
+
+        absent = st.number_input("ขาดงาน", 0.0)
+
+    with c4:
+
+        leave = st.number_input("ลากิจ / ป่วย", 0.0)
+
+        late = st.number_input("สาย", 0.0)
+
+        tax = st.number_input("ภาษี", 0.0)
+
+    ytd = st.number_input("เงินได้สะสม", 0.0)
+
+    # =========================
+    # คำนวณ
+    # =========================
+
+    income_sum = (
+        wage
+        + pos_allow
+        + holiday
+        + ot
+        + diligence
+        + target
+        + other
     )
 
-with colB:
-
-    selected = st.selectbox(
-        "เลือกจากฐานข้อมูล",
-        [""] + employees["name"].tolist(),
-        key="employee_select",
-        on_change=sync_name
+    deduct_sum = (
+        advance
+        + uniform
+        + absent
+        + leave
+        + late
+        + tax
     )
 
+    net = income_sum - deduct_sum
 
-company = st.text_input("บริษัท")
+    # =========================
+    # สรุป
+    # =========================
 
-col1, col2 = st.columns(2)
+    st.subheader("สรุป")
 
-with col1:
-    month = st.text_input("ประจำเดือน", "มีนาคม 2569")
+    s1, s2, s3 = st.columns(3)
 
-with col2:
-    pay_date = st.date_input("วันที่จ่ายเงิน", date.today())
+    with s1:
+        st.metric("รวมรายได้", f"{income_sum:,.2f}")
 
+    with s2:
+        st.metric("รวมรายการหัก", f"{deduct_sum:,.2f}")
 
-st.subheader("รายการรายได้")
+    with s3:
+        st.metric("เงินสุทธิ", f"{net:,.2f}")
 
-c1, c2 = st.columns(2)
+    # =========================
+    # สร้าง PDF
+    # =========================
 
-with c1:
+    if st.button("สร้าง Pay Slip"):
 
-    wage_rate = st.number_input("ค่าแรงต่อชั่วโมง", 0.0)
+        data = {
 
-    wage = st.number_input("ค่าจ้างรวม", 0.0)
+            "company": company,
 
-    pos_allow = st.number_input("ค่าตำแหน่ง", 0.0)
+            "name": name,
+            "position": "",
+            "account": "",
+            "start_date": "",
 
-    holiday = st.number_input("ค่าทำงานวันหยุด", 0.0)
+            "month": month,
+            "pay_date": pay_date.strftime("%d-%m-%Y"),
 
-with c2:
+            "wage_rate": wage_rate,
+            "wage": wage,
 
-    ot_hours = st.number_input("OT ชั่วโมง", 0.0)
+            "pos_allow": pos_allow,
+            "holiday": holiday,
 
-    ot = st.number_input("ค่า OT", 0.0)
+            "ot_hours": ot_hours,
+            "ot": ot,
 
-    diligence = st.number_input("เบี้ยขยัน", 0.0)
+            "diligence": diligence,
+            "target": target,
+            "other": other,
 
-    target = st.number_input("ค่าเป้า", 0.0)
+            "advance": advance,
+            "uniform": uniform,
+            "absent": absent,
 
-    other = st.number_input("อื่นๆ", 0.0)
+            "leave": leave,
+            "late": late,
+            "tax": tax,
 
+            "income_sum": income_sum,
+            "deduct_sum": deduct_sum,
 
-st.subheader("รายการหัก")
+            "net": net,
+            "ytd": ytd
+        }
 
-c3, c4 = st.columns(2)
+        pdf = generate_payslip_pdf_bytes(data)
 
-with c3:
-
-    advance = st.number_input("จ่ายล่วงหน้า", 0.0)
-
-    uniform = st.number_input("ค่าประกันชุด", 0.0)
-
-    absent = st.number_input("ขาดงาน", 0.0)
-
-with c4:
-
-    leave = st.number_input("ลากิจ / ป่วย", 0.0)
-
-    late = st.number_input("สาย", 0.0)
-
-    tax = st.number_input("ภาษี", 0.0)
-
-
-ytd = st.number_input("เงินได้สะสม", 0.0)
-
-
-income_sum = (
-    wage
-    + pos_allow
-    + holiday
-    + ot
-    + diligence
-    + target
-    + other
-)
-
-deduct_sum = (
-    advance
-    + uniform
-    + absent
-    + leave
-    + late
-    + tax
-)
-
-net = income_sum - deduct_sum
+        st.download_button(
+            "ดาวน์โหลด PDF",
+            pdf,
+            file_name=f"payslip_{name}.pdf",
+            mime="application/pdf"
+        )
 
 
-st.subheader("สรุป")
+# ======================================================
+# TAB 2 : EMPLOYEE MANAGEMENT
+# ======================================================
 
-s1, s2, s3 = st.columns(3)
+with tab2:
 
-with s1:
-    st.metric("รวมรายได้", f"{income_sum:,.2f}")
+    st.subheader("เพิ่มพนักงาน")
 
-with s2:
-    st.metric("รวมรายการหัก", f"{deduct_sum:,.2f}")
+    name_new = st.text_input("ชื่อพนักงานใหม่")
+    position_new = st.text_input("ตำแหน่ง")
+    account_new = st.text_input("เลขบัญชี")
+    start_date_new = st.text_input("วันที่เริ่มงาน")
 
-with s3:
-    st.metric("เงินสุทธิ", f"{net:,.2f}")
+    if st.button("บันทึกพนักงาน"):
 
+        if name_new.strip() == "":
+            st.warning("กรุณากรอกชื่อพนักงาน")
 
-if st.button("สร้าง Pay Slip"):
+        else:
 
-    data = {
+            new_row = pd.DataFrame([{
+                "name": name_new,
+                "position": position_new,
+                "account": account_new,
+                "start_date": start_date_new
+            }])
 
-        "company": company,
+            employees_updated = pd.concat([employees, new_row], ignore_index=True)
 
-        "name": name,
-        "position": "",
-        "account": "",
-        "start_date": "",
+            save_employees(employees_updated)
 
-        "month": month,
-        "pay_date": pay_date.strftime("%d-%m-%Y"),
+            st.success("บันทึกพนักงานแล้ว")
 
-        "wage_rate": wage_rate,
-        "wage": wage,
+            st.rerun()
 
-        "pos_allow": pos_allow,
-        "holiday": holiday,
+    st.divider()
 
-        "ot_hours": ot_hours,
-        "ot": ot,
+    st.subheader("ลบพนักงาน")
 
-        "diligence": diligence,
-        "target": target,
-        "other": other,
+    if len(employees) > 0:
 
-        "advance": advance,
-        "uniform": uniform,
-        "absent": absent,
+        delete_name = st.selectbox(
+            "เลือกพนักงานที่จะลบ",
+            employees["name"]
+        )
 
-        "leave": leave,
-        "late": late,
-        "tax": tax,
+        if st.button("ลบพนักงาน"):
 
-        "income_sum": income_sum,
-        "deduct_sum": deduct_sum,
+            employees_updated = employees[employees["name"] != delete_name]
 
-        "net": net,
-        "ytd": ytd
-    }
+            save_employees(employees_updated)
 
-    pdf = generate_payslip_pdf_bytes(data)
+            st.success("ลบพนักงานแล้ว")
 
-    st.download_button(
-        "ดาวน์โหลด PDF",
-        pdf,
-        file_name=f"payslip_{name}.pdf",
-        mime="application/pdf"
-    )
+            st.rerun()
+
+    else:
+        st.info("ยังไม่มีพนักงานในระบบ")
